@@ -3,6 +3,7 @@
 # =============================================
 # Coolify handles ingress, domain and TLS.
 # Stack: web (Next.js) + db (PostgreSQL) + redis
+# All environment variables are managed in the Coolify UI.
 # =============================================
 
 services:
@@ -10,13 +11,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-fixelo}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fixelo_change_me_in_coolify}
-      POSTGRES_DB: ${POSTGRES_DB:-fixelo_prod}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fixelo} -d ${POSTGRES_DB:-fixelo_prod}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,21 +40,18 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://fixelo.app}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
     restart: unless-stopped
     environment:
-      # ── Runtime (obrigatórias) ──────────────────────────────
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-fixelo}:${POSTGRES_PASSWORD:-fixelo_change_me_in_coolify}@db:5432/${POSTGRES_DB:-fixelo_prod}?schema=public"
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://fixelo.app}
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public"
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_URL_INTERNAL: http://web:3000
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change_me_generate_with_openssl_rand_base64_32}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       AUTH_TRUST_HOST: "true"
       REDIS_URL: redis://redis:6379
-      # ── Integrações opcionais (configure pelo painel /admin) ─
-      # SMTP, Stripe, Twilio, S3, VAPID → admin > Settings > Integrations
     depends_on:
       db:
         condition: service_healthy
@@ -75,3 +73,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+
