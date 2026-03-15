@@ -2,6 +2,8 @@
 
 Este guia usa deploy por Git no Coolify com o arquivo `docker-compose.coolify.yml`.
 
+Se voce estiver usando recurso do tipo Dockerfile em vez de Docker Compose, use o arquivo `coolify.dockerfile.env.example` como base e defina `DATABASE_URL` diretamente no service.
+
 ## 1. Preparar repositório Git
 
 1. Confirme que os arquivos abaixo estao versionados:
@@ -46,6 +48,11 @@ Variaveis opcionais:
 - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
 - `VAPID_PRIVATE_KEY`
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+
+### Importante sobre `DATABASE_URL`
+
+- Em Docker Compose com `docker-compose.coolify.yml`, o compose monta `DATABASE_URL` a partir de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`.
+- Em deploy do tipo Dockerfile, voce precisa cadastrar `DATABASE_URL` manualmente no Coolify, senao o Prisma falha exatamente com o erro que voce recebeu.
 
 ## 4. Porta e dominio
 
