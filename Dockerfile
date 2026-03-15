@@ -83,6 +83,7 @@ COPY --from=builder /app/packages/database/node_modules ./packages/database/node
 
 # Copy entrypoint
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --chown=nextjs:nodejs seed-runtime.js ./seed-runtime.js
 RUN chmod +x docker-entrypoint.sh
 
 # Set ownership

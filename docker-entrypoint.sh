@@ -6,9 +6,7 @@ node ./node_modules/prisma/build/index.js migrate deploy --schema=packages/datab
 
 if [ "${RUN_DB_SEED:-true}" = "true" ]; then
 	echo "Running database seed..."
-	cd /app/packages/database
-	node --import tsx prisma/seed.ts
-	cd /app
+	node /app/seed-runtime.js
 fi
 
 echo "Starting application..."
