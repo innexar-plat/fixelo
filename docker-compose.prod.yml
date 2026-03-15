@@ -17,6 +17,8 @@ services:
   traefik:
     image: traefik:latest
     container_name: fixelo-traefik
+    profiles:
+      - edge
     restart: always
     command:
       - --api.dashboard=true
@@ -186,6 +188,8 @@ services:
     container_name: fixelo-portainer
     restart: always
     command: -H unix:///var/run/docker.sock
+    ports:
+      - "9444:9443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
@@ -193,17 +197,18 @@ services:
       - fixelo-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.${DOMAIN:-fixelo.app}`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "traefik.http.routers.fixelo-portainer.rule=Host(`portainer.${DOMAIN:-fixelo.app}`)"
+      - "traefik.http.routers.fixelo-portainer.entrypoints=websecure"
+      - "traefik.http.routers.fixelo-portainer.tls.certresolver=letsencrypt"
+      - "traefik.http.services.fixelo-portainer.loadbalancer.server.port=9000"
 
 # =============================================
 # Docker Networks
 # =============================================
 networks:
   fixelo-network:
-    driver: bridge
+    external: true
+    name: fixelo_fixelo-network
 
 # =============================================
 # Docker Volumes

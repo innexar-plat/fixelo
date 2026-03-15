@@ -1,0 +1,38 @@
+# VCS
+.git
+.gitignore
+
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+.next
+**/.next
+.turbo
+dist
+build
+coverage
+
+# Local env files
+.env
+.env.*
+!.env.production.example
+
+# Tooling and docs not needed in image
+.github
+.vscode
+.idea
+*.log
+reports
+
+# Docker compose and local infra
+traefik
+backups
+stripe-cli
+
+# Temporary files
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

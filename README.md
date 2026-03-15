@@ -379,6 +379,15 @@ eventSource.onmessage = (event) => {
 
 ## 🚢 Deployment
 
+### Coolify (Git Deploy)
+
+1. Connect repository in Coolify
+2. Use compose file `docker-compose.coolify.yml`
+3. Set production environment variables
+4. Configure post-deploy migration command
+
+Detailed steps: see `DEPLOY_COOLIFY.md`
+
 ### Vercel (Recommended)
 
 1. Push to GitHub

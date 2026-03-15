@@ -12,6 +12,7 @@
 - [x] Environment variables template (`.env.example`)
 - [x] Project README with setup instructions
 - [x] Setup guide (`SETUP.md`)
+- [x] Git deploy setup for Coolify (`docker-compose.coolify.yml` + `DEPLOY_COOLIFY.md`)
 
 ### Database Package (`@fixelo/database`) ✓
 
@@ -104,4 +105,4 @@
 - Booking pages (selection, details)
 - Setup documentation
 
-Last updated: 2025-12-30 16:35 BRT
+Last updated: 2026-03-15 00:00 BRT

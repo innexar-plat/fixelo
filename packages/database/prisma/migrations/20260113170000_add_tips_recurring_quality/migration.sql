@@ -55,6 +55,23 @@ ALTER TABLE "CleanerProfile" ADD COLUMN IF NOT EXISTS "strikeReasons" TEXT;
 -- FINANCIAL SETTINGS UPDATES
 -- ============================================
 
+-- Create table if it was never created by init migration
+CREATE TABLE IF NOT EXISTS "FinancialSettings" (
+    "id" TEXT NOT NULL,
+    "platformFeePercent" DOUBLE PRECISION NOT NULL DEFAULT 0.15,
+    "stripeFeePercent" DOUBLE PRECISION NOT NULL DEFAULT 0.029,
+    "stripeFeeFixed" DOUBLE PRECISION NOT NULL DEFAULT 0.30,
+    "insuranceFeePercent" DOUBLE PRECISION NOT NULL DEFAULT 0.02,
+    "autoPayoutEnabled" BOOLEAN NOT NULL DEFAULT true,
+    "payoutSchedule" TEXT NOT NULL DEFAULT 'WEEKLY',
+    "payoutDay" TEXT NOT NULL DEFAULT 'FRIDAY',
+    "minPayoutAmount" DOUBLE PRECISION NOT NULL DEFAULT 50,
+    "holdDaysAfterService" INTEGER NOT NULL DEFAULT 2,
+    "requireCustomerReview" BOOLEAN NOT NULL DEFAULT true,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "FinancialSettings_pkey" PRIMARY KEY ("id")
+);
+
 -- Minimum Booking
 ALTER TABLE "FinancialSettings" ADD COLUMN IF NOT EXISTS "minBookingAmount" DOUBLE PRECISION DEFAULT 60;
 
