@@ -4,5 +4,12 @@ set -e
 echo "Running Prisma migrations..."
 node ./node_modules/prisma/build/index.js migrate deploy --schema=packages/database/prisma/schema.prisma
 
+if [ "${RUN_DB_SEED:-true}" = "true" ]; then
+	echo "Running database seed..."
+	cd /app/packages/database
+	node --import tsx prisma/seed.ts
+	cd /app
+fi
+
 echo "Starting application..."
 exec node apps/web/server.js
