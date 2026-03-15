@@ -46,8 +46,8 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-fixelo}:${POSTGRES_PASSWORD:-fixelo_change_me_in_coolify}@db:5432/${POSTGRES_DB:-fixelo_prod}?schema=public}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-${NEXT_PUBLIC_APP_URL:-https://fixelo.app}}
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-fixelo}:${POSTGRES_PASSWORD:-fixelo_change_me_in_coolify}@db:5432/${POSTGRES_DB:-fixelo_prod}?schema=public"
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://fixelo.app}
       NEXTAUTH_URL_INTERNAL: http://web:3000
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change_me_generate_with_openssl_rand_base64_32}
       AUTH_TRUST_HOST: "true"
