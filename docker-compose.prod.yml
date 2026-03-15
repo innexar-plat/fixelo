@@ -1,160 +1,100 @@
 # =============================================
-# FIXELO - Production Docker Compose
+# FIXELO - Production Docker Compose for Coolify
 # =============================================
 # Usage:
-#   docker-compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml up -d
 #
-# Prerequisites:
-#   1. Copy .env.example to .env and fill in all values
-#   2. Update domain in traefik labels
-#   3. Ensure ports 80, 443 are available
+# Notes:
+#   - Coolify handles ingress, domain and TLS
+#   - This stack keeps only app + database + migration job
+#   - Redis is not required by the current runtime code
 # =============================================
 
 services:
-  # ============================================
-  # Traefik Reverse Proxy with SSL
-  # ============================================
-  traefik:
-    image: traefik:latest
-    container_name: fixelo-traefik
-    profiles:
-      - edge
-    restart: always
-    command:
-      - --api.dashboard=true
-      - --api.insecure=false
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --entrypoints.web.address=:80
-      - --entrypoints.websecure.address=:443
-      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
-      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@fixelo.app}
-      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      - --log.level=INFO
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik_letsencrypt:/letsencrypt
-    networks:
-      - fixelo-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN:-fixelo.app}`)"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.middlewares=auth"
-      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_AUTH:-admin:$$apr1$$xyz}"
-
-  # ============================================
-  # PostgreSQL Database
-  # ============================================
   db:
     image: postgres:16-alpine
-    container_name: fixelo-db
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-fixelo}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-fixelo_prod}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backups:/backups
-    networks:
-      - fixelo-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fixelo} -d ${POSTGRES_DB:-fixelo_prod}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fixelo} -d ${POSTGRES_DB:-fixelo_prod}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
 
-  # ============================================
-  # Database Migrations (runs once)
-  # ============================================
   migrate:
     build:
       context: .
       dockerfile: Dockerfile
       target: builder
-    container_name: fixelo-migrate
     working_dir: /app
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-fixelo}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-fixelo_prod}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-fixelo}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-fixelo_prod}?schema=public}
     command: >
       sh -c "npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma && echo 'Migrations applied successfully'"
     depends_on:
       db:
         condition: service_healthy
-    networks:
-      - fixelo-network
     restart: "no"
     profiles:
       - migration
 
-  # ============================================
-  # Next.js Application
-  # ============================================
   web:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
-        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://fixelo.app}
-        - NEXT_PUBLIC_VAPID_PUBLIC_KEY=${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
-        - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
-    container_name: fixelo-web
-    restart: always
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+    restart: unless-stopped
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-fixelo}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-fixelo_prod}
-      - NEXTAUTH_URL=${NEXT_PUBLIC_APP_URL:-https://fixelo.app}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - NEXTAUTH_URL_INTERNAL=http://web:3000
-      - AUTH_TRUST_HOST=true
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - SMTP_FROM=${SMTP_FROM:-no-reply@fixelo.app}
-      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
-      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
-      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-}
-      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-fixelo}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-fixelo_prod}?schema=public}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-${NEXT_PUBLIC_APP_URL}}
+      NEXTAUTH_URL_INTERNAL: http://web:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@fixelo.app}
+      EMAIL_FROM: ${EMAIL_FROM:-no-reply@fixelo.app}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@fixelo.app}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-fixelo-uploads}
+      REDIS_URL: redis://redis:6379
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "3000"
     dns:
       - 8.8.8.8
       - 1.1.1.1
       - 8.8.4.4
-    networks:
-      - fixelo-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.fixelo.rule=Host(`${DOMAIN:-fixelo.app}`) || Host(`www.${DOMAIN:-fixelo.app}`)"
-      - "traefik.http.routers.fixelo.entrypoints=websecure"
-      - "traefik.http.routers.fixelo.tls.certresolver=letsencrypt"
-      - "traefik.http.services.fixelo.loadbalancer.server.port=3000"
-      # Security headers
-      - "traefik.http.routers.fixelo.middlewares=security-headers,www-redirect"
-      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
-      - "traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains=true"
-      - "traefik.http.middlewares.security-headers.headers.stsPreload=true"
-      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
-      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
-      - "traefik.http.middlewares.security-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
-      # WWW redirect
-      - "traefik.http.middlewares.www-redirect.redirectregex.regex=^https://www\\.(.+)"
-      - "traefik.http.middlewares.www-redirect.redirectregex.replacement=https://$${1}"
-      - "traefik.http.middlewares.www-redirect.redirectregex.permanent=true"
     deploy:
       resources:
         limits:
@@ -162,61 +102,19 @@ services:
         reservations:
           memory: 512M
 
-  # ============================================
-  # Redis (for caching - optional)
-  # ============================================
   redis:
     image: redis:7-alpine
-    container_name: fixelo-redis
-    restart: always
+    restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
-    networks:
-      - fixelo-network
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ============================================
-  # Portainer - Container Management UI
-  # ============================================
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: fixelo-portainer
-    restart: always
-    command: -H unix:///var/run/docker.sock
-    ports:
-      - "9444:9443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
-    networks:
-      - fixelo-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.fixelo-portainer.rule=Host(`portainer.${DOMAIN:-fixelo.app}`)"
-      - "traefik.http.routers.fixelo-portainer.entrypoints=websecure"
-      - "traefik.http.routers.fixelo-portainer.tls.certresolver=letsencrypt"
-      - "traefik.http.services.fixelo-portainer.loadbalancer.server.port=9000"
-
-# =============================================
-# Docker Networks
-# =============================================
-networks:
-  fixelo-network:
-    external: true
-    name: fixelo_fixelo-network
-
-# =============================================
-# Docker Volumes
-# =============================================
 volumes:
   postgres_data:
   redis_data:
-  traefik_letsencrypt:
-  portainer_data:
-
 
