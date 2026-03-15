@@ -42,13 +42,6 @@ services:
       args:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
     restart: unless-stopped
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.fixelo-web.rule=Host(`${SERVICE_FQDN_WEB_3000}`)
-      - traefik.http.routers.fixelo-web.entrypoints=https
-      - traefik.http.routers.fixelo-web.tls=true
-      - traefik.http.routers.fixelo-web.tls.certresolver=letsencrypt
-      - traefik.http.services.fixelo-web.loadbalancer.server.port=3000
     environment:
       NODE_ENV: production
       PORT: 3000
