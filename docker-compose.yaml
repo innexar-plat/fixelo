@@ -11,7 +11,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-fixelo}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fixelo_change_me_in_coolify}
       POSTGRES_DB: ${POSTGRES_DB:-fixelo_prod}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -39,41 +39,24 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://fixelo.app}
         NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
         NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
     restart: unless-stopped
     environment:
+      # ── Runtime (obrigatórias) ──────────────────────────────
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-fixelo}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-fixelo_prod}?schema=public}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-${NEXT_PUBLIC_APP_URL}}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-fixelo}:${POSTGRES_PASSWORD:-fixelo_change_me_in_coolify}@db:5432/${POSTGRES_DB:-fixelo_prod}?schema=public}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-${NEXT_PUBLIC_APP_URL:-https://fixelo.app}}
       NEXTAUTH_URL_INTERNAL: http://web:3000
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change_me_generate_with_openssl_rand_base64_32}
       AUTH_TRUST_HOST: "true"
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      SMTP_FROM: ${SMTP_FROM:-no-reply@fixelo.app}
-      EMAIL_FROM: ${EMAIL_FROM:-no-reply@fixelo.app}
-      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@fixelo.app}
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
-      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
-      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
-      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
-      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
-      AWS_REGION: ${AWS_REGION:-us-east-1}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-fixelo-uploads}
       REDIS_URL: redis://redis:6379
+      # ── Integrações opcionais (configure pelo painel /admin) ─
+      # SMTP, Stripe, Twilio, S3, VAPID → admin > Settings > Integrations
     depends_on:
       db:
         condition: service_healthy
